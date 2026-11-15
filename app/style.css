@@ -16,3 +16,18 @@ footer { color: #777; font-size: 13px; }
 .ack:disabled { opacity: .6; cursor: default; }
 .acked { color: #1a7f37; font-weight: 600; }
 .row.is-acked { background: #f3faf4; }
+.layout { display: flex; gap: 24px; align-items: flex-start; }
+.layout .list { flex: 1 1 auto; min-width: 0; }
+.row { grid-template-columns: 90px 50px 1fr 170px 80px; cursor: pointer; }
+.row:hover { background: #f2f4f8; }
+.row.is-open { outline: 2px solid #1d1d1f; outline-offset: -2px; }
+.row:focus-visible { outline: 2px solid #2b5fd9; outline-offset: -2px; }
+.panel { flex: 0 0 300px; position: sticky; top: 12px; padding: 16px; background: #fff; border: 1px solid #d0d0d0; border-radius: 8px; }
+.panel h2 { margin: 0 0 8px; font: 600 20px ui-monospace, monospace; }
+.panel dl { display: grid; grid-template-columns: 80px 1fr; gap: 4px 8px; margin: 0 0 12px; }
+.panel dt { color: #666; }
+.panel dd { margin: 0; }
+.panel-actions { display: flex; gap: 8px; align-items: center; }
+.panel .close { font: inherit; padding: 4px 12px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer; }
+.muted { color: #666; }
+@media (max-width: 760px) { .layout { flex-direction: column-reverse; } .panel { position: static; flex-basis: auto; width: 100%; box-sizing: border-box; } }
