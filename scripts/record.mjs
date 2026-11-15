@@ -58,26 +58,43 @@ const berlin = await segment('berlin', { locale: 'de-DE', timezoneId: 'Europe/Be
   const sha = await page.locator('meta[name="build"]').getAttribute('content');
   const footer = await page.getByTestId('build-sha').textContent();
 
-  // watch-board: count refresh calls while the board stays open.
+  // watch-board: note when a new incident lands at the top.
+  let lastArrival = Date.now();
+  let topId = null;
   let polls = 0;
-  page.on('request', (r) => r.url().includes('/incidents') && polls++);
-  await page.waitForTimeout(6500);
-  at(`watch-board: ${polls} refreshes in 6.5 s without a reload`);
+  page.on('response', async (r) => {
+    if (!r.url().includes('/incidents')) return;
+    polls++;
+    const top = (await r.json().catch(() => null))?.incidents?.[0]?.id;
+    if (top && topId && top !== topId) { lastArrival = Date.now(); at(`watch-board: new incident ${top} landed at the top`); }
+    if (top) topId = top;
+  });
 
-  // ack-incident: ack the top row, keep the API's receipt.
-  const row = page.getByTestId('incident-row').first();
-  const id = await row.getAttribute('data-id');
-  const ackReply = page.waitForResponse((r) => r.url().includes('/ack'));
-  await row.getByTestId('ack').hover();
-  await page.waitForTimeout(800);
-  await row.getByTestId('ack').click();
-  at(`ack-incident: clicked Ack on ${id}`);
-  const reply = await (await ackReply).json();
-  await page.locator(`[data-testid="incident-row"][data-id="${id}"] [data-testid="acked"]`).waitFor();
-  at(`ack-incident: ${id} marked acked`);
-  await page.waitForTimeout(4000);
-  at('ack-incident: still acked after two refreshes');
-  return { sha, footer, id, reply, polls };
+  // ack-incident, the way a person does it: look at a row, move the mouse to its Ack, click at that
+  // screen position. The page keeps refreshing meanwhile; nothing waits for it to hold still.
+  const tries = [];
+  for (let n = 0; n < 6; n++) {
+    // aim about when the next incident is due (they arrive every ~8-10 s)
+    while (Date.now() - lastArrival < 7600) await page.waitForTimeout(100);
+    const row = page.getByTestId('incident-row').nth(1); // the second row: the one on-call means to take
+    const meant = await row.getAttribute('data-id');
+    const box = await row.getByTestId('ack').boundingBox();
+    if (!box) continue;
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    at(`ack-incident: aiming at Ack of ${meant} (row 2)`);
+    await page.mouse.move(x, y, { steps: 12 });
+    await page.waitForTimeout(900); // a person's look-and-click time
+    const reply = page.waitForResponse((r) => r.url().includes('/ack'), { timeout: 4000 }).then((r) => r.json()).catch(() => null);
+    await page.mouse.click(x, y);
+    const got = await reply;
+    const hit = got ? got.id : null;
+    at(`ack-incident: clicked at row 2 meaning ${meant}; ack went to ${hit ?? 'nothing (click lost)'}`);
+    tries.push({ meant, hit, reply: got });
+    await page.waitForTimeout(2500);
+    if (hit !== meant) { at('ack-incident: the board acked a different row than the one meant'); break; }
+  }
+  await page.waitForTimeout(3000);
+  return { sha, footer, tries, polls };
 });
 
 const auckland = await segment('auckland', { locale: 'en-NZ', timezoneId: 'Pacific/Auckland' }, async (page, at) => {
@@ -89,6 +106,9 @@ const auckland = await segment('auckland', { locale: 'en-NZ', timezoneId: 'Pacif
   return { first };
 });
 
+const run = { url, sha: berlin.sha, footer: berlin.footer, tries: berlin.tries, polls: berlin.polls, berlin: berlin.log, auckland: auckland.log };
+writeFileSync(`${out}/run.json`, JSON.stringify(run, null, 2));
+console.log(JSON.stringify({ sha: run.sha, tries: run.tries.map(({ meant, hit }) => ({ meant, hit })), log: [...run.berlin, ...run.auckland].map((l) => `${(l.ms / 1000).toFixed(1)}s ${l.what}`) }, null, 2));
 const videoEnd = Date.now() - videoStart;
 await browser.close();
 // Join frames with their real durations, so mm:ss in the log matches the video.
@@ -96,7 +116,3 @@ frames.sort((a, b) => a.t - b.t);
 const list = frames.map((f, i) => `file 'frames/${f.file}'\nduration ${(((frames[i + 1]?.t ?? videoEnd) - f.t) / 1000).toFixed(3)}`).join('\n');
 writeFileSync(`${out}/frames.txt`, `${list}\nfile 'frames/${frames.at(-1).file}'\n`);
 execFileSync('/usr/local/bin/ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', `${out}/frames.txt`, '-vf', 'fps=25,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', '-c:v', 'libx264', '-movflags', '+faststart', `${out}/video.mp4`]);
-const ackLine = berlin.log.find((l) => l.what.startsWith('ack-incident: clicked'));
-const run = { url, sha: berlin.sha, footer: berlin.footer, ack: { id: berlin.id, at: ackLine.at, reply: berlin.reply }, polls: berlin.polls, berlin: berlin.log, auckland: auckland.log };
-writeFileSync(`${out}/run.json`, JSON.stringify(run, null, 2));
-console.log(JSON.stringify({ sha: run.sha, footer: run.footer, ackId: run.ack.id, ackAt: run.ack.at, polls: run.polls, log: [...run.berlin, ...run.auckland].map((l) => `${l.at} ${l.what}`) }, null, 2));
