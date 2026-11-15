@@ -34,23 +34,55 @@ function localTime(iso) {
   return Number.isNaN(d.getTime()) ? iso : timeFormat.format(d);
 }
 
-function rowHtml(i) {
-  const acked = ackState.get(i.id) === 'acked';
-  const open = i.id === openId;
-  return `<li data-testid="incident-row" data-id="${esc(i.id)}" class="row ${sevClass(i.severity)}${acked ? ' is-acked' : ''}${open ? ' is-open' : ''}"
-        role="button" tabindex="0" aria-pressed="${open}" aria-label="Open ${esc(i.id)}">
-        <span class="id">${esc(i.id)}</span>
+function rowInner(i, acked) {
+  return `<span class="id">${esc(i.id)}</span>
         <span class="sev">${esc(i.severity)}</span>
         <span class="what">${esc(i.service)} · ${esc(i.region)} · ${esc(i.summary)}</span>
         <time datetime="${esc(i.openedAt)}" title="${esc(i.openedAt)}">${esc(localTime(i.openedAt))}</time>
-        <span class="state">${acked ? '<span data-testid="acked" class="acked">✓ acked</span>' : ''}</span>
-      </li>`;
+        <span class="state">${acked ? '<span data-testid="acked" class="acked">✓ acked</span>' : ''}</span>`;
 }
 
+/** Row elements by incident id. A row stays the same element for its whole life on the board. */
+const rowEls = new Map();
+
 function renderList() {
-  // R1: newest first, live at the top.
+  // R1: newest first, live at the top. Rows are updated in place and new ones inserted; an existing
+  // row is never rebuilt or taken out while its incident is still on the board, so it does not jump,
+  // flicker or lose focus on the 2-second refresh.
   const sorted = [...incidents].sort((a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt));
-  list.innerHTML = sorted.map(rowHtml).join('');
+  const live = new Set(sorted.map((i) => i.id));
+  for (const [id, el] of rowEls) {
+    if (!live.has(id)) {
+      el.remove();
+      rowEls.delete(id);
+    }
+  }
+  let prev = null;
+  for (const i of sorted) {
+    const acked = ackState.get(i.id) === 'acked';
+    const open = i.id === openId;
+    let el = rowEls.get(i.id);
+    if (!el) {
+      el = document.createElement('li');
+      el.setAttribute('data-testid', 'incident-row');
+      el.dataset.id = i.id;
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', `Open ${i.id}`);
+      rowEls.set(i.id, el);
+    }
+    el.className = `row ${sevClass(i.severity)}${acked ? ' is-acked' : ''}${open ? ' is-open' : ''}`;
+    el.setAttribute('aria-pressed', String(open));
+    const html = rowInner(i, acked);
+    if (el.dataset.html !== html) {
+      el.innerHTML = html;
+      el.dataset.html = html;
+    }
+    // Place it right after the previous row; only touch the DOM when it is not there already.
+    const want = prev ? prev.nextElementSibling : list.firstElementChild;
+    if (want !== el) list.insertBefore(el, want);
+    prev = el;
+  }
   list.hidden = sorted.length === 0;
   empty.hidden = sorted.length !== 0;
 }

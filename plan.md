@@ -19,6 +19,8 @@ what just broke and takes it.
   The panel's **Ack** sends the ack for that id (`api.ack(id)`) and marks the row acked. The panel stays on the
   same incident while the list refreshes and rows move.
 - **R3** Show a loader until incidents load.
+- **R4a** (with R2's change) A refresh updates rows in place and inserts new ones; it never takes a row off the
+  board while its incident is still there.
 - **R4** The board refreshes itself every 2 seconds while open.
 - **R5** Times show in the viewer's local time; day before month for EU locales (dd/mm).
 - **R6** The page names its build: `<meta name="build" content="<git sha>">` in the head and the same sha in the footer.
