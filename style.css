@@ -1,0 +1,33 @@
+body { margin: 0; font: 15px/1.4 system-ui, sans-serif; color: #1d1d1f; background: #fafafa; }
+header, main, footer { padding: 12px 24px; }
+h1 { margin: 0; font-size: 22px; }
+.sub { margin: 2px 0 0; color: #666; }
+.list { list-style: none; margin: 0; padding: 0; max-width: 960px; }
+.row { display: grid; grid-template-columns: 90px 50px 1fr 200px auto; gap: 12px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #e5e5e5; background: #fff; }
+.row .id { font-family: ui-monospace, monospace; }
+.row.sev1 .sev { color: #b00020; font-weight: 600; }
+.row.sev2 .sev { color: #a15c00; }
+.row time { color: #555; font-variant-numeric: tabular-nums; }
+footer { color: #777; font-size: 13px; }
+[hidden] { display: none !important; }
+.loader, .empty { color: #555; }
+.error { color: #b00020; }
+.ack { font: inherit; padding: 4px 12px; border: 1px solid #1d1d1f; border-radius: 6px; background: #fff; cursor: pointer; }
+.ack:disabled { opacity: .6; cursor: default; }
+.acked { color: #1a7f37; font-weight: 600; }
+.row.is-acked { background: #f3faf4; }
+.layout { display: flex; gap: 24px; align-items: flex-start; }
+.layout .list { flex: 1 1 auto; min-width: 0; }
+.row { grid-template-columns: 90px 50px 1fr 170px 80px; cursor: pointer; }
+.row:hover { background: #f2f4f8; }
+.row.is-open { outline: 2px solid #1d1d1f; outline-offset: -2px; }
+.row:focus-visible { outline: 2px solid #2b5fd9; outline-offset: -2px; }
+.panel { flex: 0 0 300px; position: sticky; top: 12px; padding: 16px; background: #fff; border: 1px solid #d0d0d0; border-radius: 8px; }
+.panel h2 { margin: 0 0 8px; font: 600 20px ui-monospace, monospace; }
+.panel dl { display: grid; grid-template-columns: 80px 1fr; gap: 4px 8px; margin: 0 0 12px; }
+.panel dt { color: #666; }
+.panel dd { margin: 0; }
+.panel-actions { display: flex; gap: 8px; align-items: center; }
+.panel .close { font: inherit; padding: 4px 12px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer; }
+.muted { color: #666; }
+@media (max-width: 760px) { .layout { flex-direction: column-reverse; } .panel { position: static; flex-basis: auto; width: 100%; box-sizing: border-box; } }
